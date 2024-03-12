@@ -12,7 +12,6 @@ function validateConditions(conditions) {
 
 
 function evaluateSubmission(submission,conditions) {
-    console.log(submission);
     return conditions.every(({ id, condition, value }) => {
       const question = submission.questions.find(q => q.id === id);
       if (!question) return false;
