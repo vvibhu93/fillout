@@ -1,6 +1,9 @@
 const { request } = require('express');
 
 const { BEARER_TOKEN } = require('./credentials.js')
+const {EXTERNAL_API_ENDPOINT} = require('./constants.js');
+
+const {validateConditions,evaluateSubmission} = require('./validations.js')
 const express = require('express')
 
 const axios = require('axios');
@@ -19,12 +22,15 @@ app.get("/status", (request,response) => {
     response.send(status);
 })
 
-const EXTERNAL_API_ENDPOINT = "https://api.fillout.com/v1/api/forms/cLZojxk94ous/submissions";
-
 app.post('/call-api', async (req, res) => {
 
     const conditions = req.body;
-    console.log(BEARER_TOKEN);
+    
+    const validationError = validateConditions(conditions);
+    if (validationError) {
+      return res.status(400).json({ message: 'Invalid request body', error: validationError });
+    }
+
 
     const {offset = 0, limit = 10} =req.query;
 
@@ -49,39 +55,6 @@ app.post('/call-api', async (req, res) => {
       res.status(500).json({ message: 'Error calling external API', error: error.message });
     }
   });
-  
-  function evaluateSubmission(submission,conditions) {
-    console.log(submission);
-    return conditions.every(({ id, condition, value }) => {
-      const question = submission.questions.find(q => q.id === id);
-      if (!question) return false;
-  
-      switch (condition) {
-        case "equals":
-          return question.value === value;
-        case "greater_than":
-            if(question.type === 'DatePicker')
-                return new Date(question.value) > new Date(value);
-            else if (question.type === 'NumberInput')
-                return  Number(question.value) > value;
-        case "less_than":
-            if(question.type === 'DatePicker')
-                return new Date(question.value) < new Date(value);
-            else if (question.type === 'NumberInput')
-                return  Number(question.value) < value; 
-        case "does_not_equal":
-            if(question.type === 'DatePicker')
-                return new Date(question.value) > new Date(value);
-            else if (question.type === 'NumberInput')
-                return  Number(question.value) > value;
-            else
-                return question.value !== value;       
-        default:
-          return false;
-      }
-    });
-  }
-  
   
   app.listen(PORT, () => {
     console.log("server listening on PORT:", PORT);
